@@ -81,7 +81,8 @@ int sendMsg(int mq, char *message, int size)
 int receiveMsg(int mq, char *message, int size)
 {
 	int ret;
-	ret = mq_receive (mq,message,size,&priority);
+	unsigned int priority;
+	ret = mq_receive(mq,message,size,&priority);
 	if (ret == -1)
 		perror ("\n\rReceive : mq_receive failed !!!");
 	return ret;
