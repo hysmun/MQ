@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <errno.h>
+#include <time.h>
 
 #define NBRROUTES 10
 typedef struct ROUTES
@@ -146,7 +147,7 @@ int fctTri(void)
 
 int fctAffichage(void)
 {
-	int i, j;
+	int i;
 	ROUTES tRoutes[NBRROUTES];
 	printf("Debut Affichage\n");
 
