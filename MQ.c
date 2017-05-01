@@ -10,6 +10,8 @@
 int initMQ(void);
 int finishMQ(void);
 
+int sendMsg(int mq, char *message, int size);
+
 int fctLecture(void);
 int fctTri(void);
 int fctAffichage(void);
@@ -67,7 +69,23 @@ int fctAffichage(void)
 	exit(0);
 }
 
+int sendMsg(int mq, char *message, int size)
+{
+	int ret;
+	ret = mq_send (mq,message,size,1);
+	if (ret == -1)
+		perror ("\n\rSend : mq_send failed !!!");
+	return ret;
+}
 
+int receiveMsg(int mq, char *message, int size)
+{
+	int ret;
+	ret = mq_receive (mq,message,size,&priority);
+	if (ret == -1)
+		perror ("\n\rReceive : mq_receive failed !!!");
+	return ret;
+}
 
 
 
