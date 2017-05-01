@@ -7,10 +7,20 @@
 #include <signal.h>
 #include <errno.h>
 
+#define NBRROUTES 10
+typedef struct ROUTES
+{
+	int nbrRoute;
+	double duree;
+}ROUTES;
+
 int initMQ(void);
 int finishMQ(void);
 
 int sendMsg(int mq, char *message, int size);
+int receiveMsg(int mq, char *message, int size);
+double drand();
+int swap(ROUTES *p1, ROUTES *p2);
 
 int fctLecture(void);
 int fctTri(void);
@@ -48,6 +58,7 @@ int mq_triaff;
 int main(int argc, char *argv[])
 {
 	initMQ();
+	srand(time(NULL));
 
 	printf("Fork lecture\n");
 	if((pidLec = fork()) == 0)
@@ -72,7 +83,7 @@ int main(int argc, char *argv[])
 	wait(NULL);
 	wait(NULL);
 	wait(NULL);
-	printf("Fin wait");
+	printf("Fin wait\n");
 
 	finishMQ();
 	return EXIT_SUCCESS;
@@ -80,16 +91,79 @@ int main(int argc, char *argv[])
 
 int fctLecture(void)
 {
+	int i;
+	ROUTES tRoutes[NBRROUTES];
+	printf("Debut Lecture\n");
+
+	//generation valeur
+	for(i=0; i< NBRROUTES; i++)
+	{
+		tRoutes[i].nbrRoute = i;
+		tRoutes[i].duree = drand();
+	}
+
+	//envois des données à tri
+	for(i=0; i<NBRROUTES; i++)
+	{
+		sendMsg(mq_lectri, (char *)&tRoutes[i],sizeof(ROUTES));
+	}
+
 	exit(0);
 }
 
 int fctTri(void)
 {
+	int i, j;
+	ROUTES tRoutes[NBRROUTES];
+	printf("Debut Tri\n");
+
+	//reception données de lecture
+	for(i=0; i<NBRROUTES; i++)
+	{
+		receiveMsg(mq_lectri, (char *)&tRoutes[i],sizeof(ROUTES));
+	}
+
+	//tri
+	for(i=0; i<NBRROUTES; i++)
+	{
+		for(j = NBRROUTES-1; j>i ;j--)
+		{
+			if(tRoutes[j].duree < tRoutes[j-1].duree)
+			{
+				swap(&tRoutes[j], &tRoutes[j-1]);
+			}
+		}
+	}
+
+	//envois données à affichage
+	for(i=0; i<NBRROUTES; i++)
+	{
+		sendMsg(mq_triaff, (char *)&tRoutes[i],sizeof(ROUTES));
+	}
+
 	exit(0);
 }
 
 int fctAffichage(void)
 {
+	int i, j;
+	ROUTES tRoutes[NBRROUTES];
+	printf("Debut Affichage\n");
+
+	//reception données de lecture
+	for(i=0; i<NBRROUTES; i++)
+	{
+		receiveMsg(mq_triaff, (char *)&tRoutes[i],sizeof(ROUTES));
+	}
+
+	//affichage
+	printf("Affichage :\n\n");
+	for(i=0; i<NBRROUTES; i++)
+	{
+		printf("%d -- routes n %d a une duree de %lf seconde\n", i, tRoutes[i].nbrRoute, tRoutes[i].duree);
+		fflush(stdout);
+	}
+	printf("\n");
 	exit(0);
 }
 
@@ -108,11 +182,26 @@ int receiveMsg(int mq, char *message, int size)
 	unsigned int priority;
 	ret = mq_receive(mq,message,size,&priority);
 	if (ret == -1)
-		perror ("\n\rReceive : mq_receive failed !!!");
+		perror ("\n\rReceive : mq_receive failed !!!\n");
 	return ret;
 }
 
+double drand()
+{
+	return ((double)rand())/((double)rand());
+}
 
+int swap(ROUTES *p1, ROUTES *p2)
+{
+	ROUTES tmp;
+	tmp.nbrRoute = p1->nbrRoute;
+	tmp.duree = p1->duree;
+	p1->nbrRoute = p2->nbrRoute;
+	p1->duree = p2->duree;
+	p2->nbrRoute = tmp.nbrRoute;
+	p2->duree = tmp.duree;
+	return 1;
+}
 
 
 
@@ -120,8 +209,8 @@ int receiveMsg(int mq, char *message, int size)
 int initMQ(void)
 {
 	printf("Debut init\n");
-	attr.mq_maxmsg = 20;
-	attr.mq_msgsize = 10;
+	attr.mq_maxmsg = NBRROUTES+1;
+	attr.mq_msgsize = sizeof(ROUTES);
 	attr.mq_flags = 0;
 
 	mq_lectri = mq_open ("/tmp/lectri",O_CREAT|O_RDWR,0777,&attr);
